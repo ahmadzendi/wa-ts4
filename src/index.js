@@ -2,7 +2,7 @@ import { connectWhatsApp, sendWhatsApp, getCustomMessage, isWaConnected } from '
 import { connectTreasury, setOnPriceUpdate, isTreasuryConnected } from './treasury-ws.js';
 import { startMarketData, getXauUsd, getUsdIdr, stopMarketData, fetchOnce } from './market-data.js';
 import { buildMessage } from './message-builder.js';
-import { isWeekendQuiet } from './utils.js';
+import { isWeekendQuiet, messageQueue } from './utils.js';
 
 let lastBuyPrice = null;
 let lastUpdatedAt = null;
@@ -25,7 +25,6 @@ setOnPriceUpdate(({ buyingRate, sellingRate, updatedAt }) => {
   }
 
   const prevBuy = lastBuyPrice;
-
   lastBuyPrice = newBuy;
   lastUpdatedAt = updatedAt;
 
@@ -39,8 +38,11 @@ setOnPriceUpdate(({ buyingRate, sellingRate, updatedAt }) => {
     customMessage: getCustomMessage(),
   });
 
-  sendWhatsApp(msg).then(sent => { if (sent) totalUpdates++; }).catch(() => {});
+  sendWhatsApp(msg).then(sent => {
+    if (sent) totalUpdates++;
+  }).catch(() => {});
 });
+
 async function start() {
   try {
     await connectWhatsApp();
@@ -50,21 +52,14 @@ async function start() {
 
       let resolved = false;
 
-      const onConnected = () => {
-        if (resolved) return;
-        resolved = true;
-        clearTimeout(timeout);
-        resolve();
-      };
-
       const check = setInterval(() => {
         if (isWaConnected()) {
           clearInterval(check);
-          onConnected();
+          if (!resolved) { resolved = true; resolve(); }
         }
       }, 200);
 
-      const timeout = setTimeout(() => {
+      setTimeout(() => {
         clearInterval(check);
         if (!resolved) { resolved = true; resolve(); }
       }, 60000);
@@ -90,4 +85,3 @@ process.on('SIGINT', async () => {
 });
 
 start();
-
