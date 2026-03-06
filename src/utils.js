@@ -62,6 +62,50 @@ export function calcProfit(nominal, modal, buy, sell) {
   const selisih = gram * sell - modal;
   if (selisih >= 0) return { gram, selisih, emoji: '🟢', sign: '+' };
   return { gram, selisih: -selisih, emoji: '🔴', sign: '-' };
-
 }
 
+export function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+class MessageQueue {
+  constructor() {
+    this.queue = [];
+    this.maxSize = 100;
+  }
+
+  add(message) {
+    if (this.queue.length >= this.maxSize) {
+      this.queue.shift();
+    }
+    this.queue.push({
+      message,
+      timestamp: Date.now(),
+      attempts: 0
+    });
+  }
+
+  getNext() {
+    return this.queue[0] || null;
+  }
+
+  removeFirst() {
+    return this.queue.shift();
+  }
+
+  incrementAttempts() {
+    if (this.queue[0]) {
+      this.queue[0].attempts++;
+    }
+  }
+
+  size() {
+    return this.queue.length;
+  }
+
+  isEmpty() {
+    return this.queue.length === 0;
+  }
+}
+
+export const messageQueue = new MessageQueue();
